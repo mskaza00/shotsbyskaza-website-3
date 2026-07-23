@@ -1,0 +1,168 @@
+/* ==========================================================================
+   ShotsBySkaza gallery
+   --------------------------------------------------------------------------
+   HOW TO ADD YOUR OWN PHOTOS
+   1. Drop image files into photos/sports/, photos/portraits/, or photos/graphics/
+   2. Add the filename (and an optional caption) to the matching array below.
+   3. That's it — the grid, lightbox, and hero image all update automatically.
+   ========================================================================== */
+
+const PHOTOS = {
+  sports: [
+    { file: "sample-1.svg", caption: "Sample sports photo — replace me" },
+    { file: "sample-2.svg", caption: "Sample sports photo — replace me" },
+    { file: "sample-3.svg", caption: "Sample sports photo — replace me" },
+  ],
+  portraits: [
+    { file: "sample-1.svg", caption: "Sample portrait — replace me" },
+    { file: "sample-2.svg", caption: "Sample portrait — replace me" },
+    { file: "sample-3.svg", caption: "Sample portrait — replace me" },
+  ],
+  graphics: [
+    { file: "sample-1.svg", caption: "Sample graphic design — replace me" },
+    { file: "sample-2.svg", caption: "Sample graphic design — replace me" },
+    { file: "sample-3.svg", caption: "Sample graphic design — replace me" },
+  ],
+};
+
+const state = {
+  order: [],   // flat list of {category, file, caption} in the currently open gallery
+  index: 0,
+};
+
+function photoPath(category, file) {
+  return `photos/${category}/${file}`;
+}
+
+function renderGalleries() {
+  Object.keys(PHOTOS).forEach((category) => {
+    const container = document.getElementById(`${category}-gallery`);
+    if (!container) return;
+
+    const items = PHOTOS[category];
+    if (!items.length) {
+      container.innerHTML = `<div class="gallery-empty">No photos in this category yet — add some to photos/${category}/</div>`;
+      return;
+    }
+
+    container.innerHTML = items
+      .map(
+        (item, i) => `
+        <button class="gallery-item" data-category="${category}" data-index="${i}" aria-label="Open photo ${i + 1} of ${category}">
+          <img src="${photoPath(category, item.file)}" alt="${item.caption || ""}" loading="lazy">
+        </button>`
+      )
+      .join("");
+  });
+
+  // Use the first sports photo as the hero image if one exists
+  const heroImg = document.getElementById("heroImg");
+  if (heroImg && PHOTOS.sports.length) {
+    heroImg.src = photoPath("sports", PHOTOS.sports[0].file);
+  }
+}
+
+/* ---------------- Lightbox ---------------- */
+
+const lightbox = document.getElementById("lightbox");
+const lightboxImg = document.getElementById("lightboxImg");
+const lightboxCaption = document.getElementById("lightboxCaption");
+
+function openLightbox(category, index) {
+  state.order = PHOTOS[category].map((item) => ({ category, ...item }));
+  state.index = index;
+  showLightboxImage();
+  lightbox.classList.add("is-open");
+  lightbox.setAttribute("aria-hidden", "false");
+  document.body.style.overflow = "hidden";
+}
+
+function closeLightbox() {
+  lightbox.classList.remove("is-open");
+  lightbox.setAttribute("aria-hidden", "true");
+  document.body.style.overflow = "";
+}
+
+function showLightboxImage() {
+  const item = state.order[state.index];
+  if (!item) return;
+  lightboxImg.src = photoPath(item.category, item.file);
+  lightboxImg.alt = item.caption || "";
+  lightboxCaption.textContent = item.caption || "";
+}
+
+function stepLightbox(delta) {
+  const len = state.order.length;
+  state.index = (state.index + delta + len) % len;
+  showLightboxImage();
+}
+
+document.addEventListener("click", (e) => {
+  const item = e.target.closest(".gallery-item");
+  if (item) {
+    openLightbox(item.dataset.category, Number(item.dataset.index));
+  }
+});
+
+document.getElementById("lightboxClose").addEventListener("click", closeLightbox);
+document.getElementById("lightboxPrev").addEventListener("click", () => stepLightbox(-1));
+document.getElementById("lightboxNext").addEventListener("click", () => stepLightbox(1));
+
+lightbox.addEventListener("click", (e) => {
+  if (e.target === lightbox) closeLightbox();
+});
+
+document.addEventListener("keydown", (e) => {
+  if (!lightbox.classList.contains("is-open")) return;
+  if (e.key === "Escape") closeLightbox();
+  if (e.key === "ArrowLeft") stepLightbox(-1);
+  if (e.key === "ArrowRight") stepLightbox(1);
+});
+
+/* ---------------- Filmstrip tabs (gallery category switcher) ---------------- */
+
+document.querySelectorAll(".filmstrip-tab").forEach((tab) => {
+  tab.addEventListener("click", () => {
+    const target = tab.dataset.target;
+
+    document.querySelectorAll(".filmstrip-tab").forEach((t) => {
+      t.classList.toggle("is-active", t === tab);
+      t.setAttribute("aria-selected", t === tab ? "true" : "false");
+    });
+
+    document.querySelectorAll(".gallery-category").forEach((section) => {
+      section.classList.toggle("is-active", section.id === target);
+    });
+  });
+});
+
+/* ---------------- Mobile nav ---------------- */
+
+const navToggle = document.getElementById("navToggle");
+const siteNav = document.getElementById("siteNav");
+
+navToggle.addEventListener("click", () => {
+  const isOpen = siteNav.classList.toggle("is-open");
+  navToggle.setAttribute("aria-expanded", String(isOpen));
+});
+
+document.querySelector(".dropdown-trigger")?.addEventListener("click", (e) => {
+  // Only needed for touch/mobile, where :hover doesn't apply
+  if (window.innerWidth <= 860) {
+    const dropdown = e.currentTarget.closest(".dropdown");
+    const isOpen = dropdown.classList.toggle("is-open");
+    e.currentTarget.setAttribute("aria-expanded", String(isOpen));
+  }
+});
+
+// Close mobile menu after tapping a nav link
+document.querySelectorAll(".site-nav a").forEach((link) => {
+  link.addEventListener("click", () => {
+    siteNav.classList.remove("is-open");
+    navToggle.setAttribute("aria-expanded", "false");
+  });
+});
+
+/* ---------------- Init ---------------- */
+
+renderGalleries();
